@@ -7,6 +7,7 @@ import cn.hutool.json.JSON;
 import cn.hutool.json.JSONUtil;
 import com.rookie.aigc.config.BilibiliProperties;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -20,16 +21,12 @@ import java.util.Map;
 @Component
 public class BilibiliSubtitle {
 
-    private final BilibiliProperties bilibiliProperties;
+    @Value("${bilibili.session-token}")
+    private  String bilibiliSessionData;
 
-    @Autowired
-    public BilibiliSubtitle(BilibiliProperties bilibiliProperties) {
-        this.bilibiliProperties = bilibiliProperties;
-    }
 
     public String fetchBilibiliSubtitleUrls(String videoId, String pageNumber) {
 
-        String sessionToken = bilibiliProperties.getSessionToken();
 
         // 构造请求URL
         String params = videoId.startsWith("av") ? "?aid=" + videoId.substring(2) : "?bvid=" + videoId;
@@ -41,7 +38,7 @@ public class BilibiliSubtitle {
         request.header("Content-Type", "application/json");
         request.header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36");
         request.header("Host", "api.bilibili.com");
-        request.header("Cookie", "SESSDATA=" + sessionToken);
+        request.header("Cookie", "SESSDATA=" + bilibiliSessionData);
 
         // 发送请求并获取响应
         HttpResponse response = request.execute();
@@ -63,7 +60,7 @@ public class BilibiliSubtitle {
                     .header("Accept", "application/json")
                     .header("Content-Type", "application/json")
                     .header("User-Agent", "Mozilla/5.0 ...")
-                    .header("Cookie", "SESSDATA=" + sessionToken)
+                    .header("Cookie", "SESSDATA=" + bilibiliSessionData)
                     .execute();
 
             JSON pageJson = JSONUtil.parse(pageResponse.body());

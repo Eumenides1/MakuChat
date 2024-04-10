@@ -1,5 +1,6 @@
 package com.rookie.aigc.service.bilibili;
 
+import com.rookie.aigc.domain.dto.bilibili.BiliBiliUnRead;
 import com.rookie.aigc.domain.vo.resp.SubtitleResult;
 
 /**
@@ -11,5 +12,7 @@ public interface BilibiliService {
 
 
     SubtitleResult fetchBilibiliSubtitle(String videoId, String pageNumber, Boolean shouldShowTimestamp);
+
+    BiliBiliUnRead getRuntimeAtNum();
 
 }

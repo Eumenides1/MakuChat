@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.rookie.aigc.domain.dto.bilibili.BiliBiliUnRead;
 import com.rookie.aigc.domain.vo.req.SummarizeReq;
 import com.rookie.aigc.domain.vo.req.UserConfig;
 import com.rookie.aigc.domain.vo.req.VideoConfig;
@@ -17,10 +18,9 @@ import com.zhipu.oapi.Constants;
 import com.zhipu.oapi.service.v4.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.PostConstruct;
 import java.util.Collections;
@@ -32,6 +32,7 @@ import java.util.Collections;
  */
 @RestController
 @RequestMapping("/v1/chat")
+@EnableScheduling
 public class ChatController {
 
     public static final int BYTE_LIMIT = 6200;
@@ -59,6 +60,14 @@ public class ChatController {
         mapper.addMixIn(ChatCompletionRequest.class, ChatCompletionRequestMixIn.class);
         mapper.addMixIn(ChatFunctionCall.class, ChatFunctionCallMixIn.class);
         return mapper;
+    }
+
+    @Scheduled(cron = "0 */1 * * * ?")
+    public void getUnRead(){
+        BiliBiliUnRead runtimeAtNum = bilibiliService.getRuntimeAtNum();
+        if (runtimeAtNum.getCode() == 0) {
+            System.out.println(runtimeAtNum.getData().getAt());
+        }
     }
 
 

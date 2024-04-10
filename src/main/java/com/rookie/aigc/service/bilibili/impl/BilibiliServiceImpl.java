@@ -6,6 +6,7 @@ import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSON;
 import cn.hutool.json.JSONUtil;
 import com.rookie.aigc.component.bilibili.BilibiliSubtitle;
+import com.rookie.aigc.domain.dto.bilibili.BiliBiliUnRead;
 import com.rookie.aigc.domain.dto.bilibili.Subtitle;
 import com.rookie.aigc.domain.dto.bilibili.Subtitles;
 import com.rookie.aigc.domain.dto.bilibili.BilibiliVideoInfo;
@@ -15,6 +16,7 @@ import com.rookie.aigc.domain.vo.resp.SubtitleResult;
 import com.rookie.aigc.service.bilibili.BilibiliService;
 import com.rookie.aigc.utils.SubtitleProcessor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -26,6 +28,11 @@ import java.util.List;
  */
 @Service
 public class BilibiliServiceImpl implements BilibiliService {
+
+    @Value("${bilibili.session-token}")
+    private  String bilibiliSessionData;
+
+    private String UNREAD_MSG_URL = "https://api.bilibili.com/x/msgfeed/unread";
 
     @Autowired
     private BilibiliSubtitle subtitle;
@@ -68,5 +75,23 @@ public class BilibiliServiceImpl implements BilibiliService {
         List<CommonSubtitleItem> commonSubtitleItems = SubtitleProcessor.reduceSubtitleTimestamp(bean.getBody(), shouldShowTimestamp);
 
         return new SubtitleResult(title, commonSubtitleItems, descriptionText);
+    }
+
+    @Override
+    public BiliBiliUnRead getRuntimeAtNum() {
+
+        HttpRequest request = HttpUtil.createGet(UNREAD_MSG_URL);
+        request.header("Accept", "application/json");
+        request.header("Content-Type", "application/json");
+        request.header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36");
+        request.header("Host", "api.bilibili.com");
+        request.header("Cookie", "SESSDATA=" + bilibiliSessionData);
+
+        HttpResponse response = request.execute();
+        JSON json = JSONUtil.parse(response.body());
+
+        BiliBiliUnRead biliBiliUnRead = JSONUtil.toBean(json.toString(), BiliBiliUnRead.class);
+
+        return biliBiliUnRead;
     }
 }
