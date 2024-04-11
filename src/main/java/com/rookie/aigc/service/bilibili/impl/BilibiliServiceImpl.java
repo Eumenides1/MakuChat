@@ -11,11 +11,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import com.rookie.aigc.component.bilibili.BilibiliSubtitle;
 import com.rookie.aigc.domain.dto.bilibili.BiliBiliUnRead;
+import com.rookie.aigc.domain.dto.bilibili.BilibiliVideoInfo;
 import com.rookie.aigc.domain.dto.bilibili.Subtitle;
 import com.rookie.aigc.domain.dto.bilibili.Subtitles;
-import com.rookie.aigc.domain.dto.bilibili.BilibiliVideoInfo;
 import com.rookie.aigc.domain.dto.common.CommonSubtitleItem;
 import com.rookie.aigc.domain.vo.req.BiliBiliReplyReq;
 import com.rookie.aigc.domain.vo.req.UserConfig;
@@ -29,13 +28,13 @@ import com.rookie.aigc.utils.SubtitlePromptGenerator;
 import com.zhipu.oapi.ClientV4;
 import com.zhipu.oapi.Constants;
 import com.zhipu.oapi.service.v4.model.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author eumenides
@@ -63,9 +62,6 @@ public class BilibiliServiceImpl implements BilibiliService {
 
     public static final String REPLY_URL = "https://api.bilibili.com/x/v2/reply/add";
 
-    @Autowired
-    private BilibiliSubtitle subtitle;
-
     private ClientV4 client; // 移除static修饰符
 
     @PostConstruct
@@ -90,7 +86,7 @@ public class BilibiliServiceImpl implements BilibiliService {
     @Override
     public SubtitleResult fetchBilibiliSubtitle(String videoId, String pageNumber, Boolean shouldShowTimestamp) {
 
-        String jsonStr = subtitle.fetchBilibiliSubtitleUrls(videoId, pageNumber);
+        String jsonStr = fetchBilibiliSubtitleUrls(videoId, pageNumber);
         BilibiliVideoInfo res = JSONUtil.toBean(jsonStr, BilibiliVideoInfo.class);
 
         String title = res.getTitle();
@@ -181,7 +177,6 @@ public class BilibiliServiceImpl implements BilibiliService {
 
         int status = json.getInt("status");
 
-
     }
 
     @Override
@@ -235,5 +230,65 @@ public class BilibiliServiceImpl implements BilibiliService {
 
         return invokeModelApiResp.getData().getChoices().get(0).getMessage().getContent().toString();
 
+    }
+
+    @Override
+    public String fetchBilibiliSubtitleUrls(String videoId, String pageNumber) {
+        // 构造请求URL
+        String params = videoId.startsWith("av") ? "?aid=" + videoId.substring(2) : "?bvid=" + videoId;
+        String requestUrl = "https://api.bilibili.com/x/web-interface/view" + params;
+
+        // 使用Hutool构建请求
+        HttpRequest request = HttpUtil.createGet(requestUrl);
+        request.header("Accept", "application/json");
+        request.header("Content-Type", "application/json");
+        request.header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36");
+        request.header("Host", "api.bilibili.com");
+        request.header("Cookie", "SESSDATA=" + bilibiliSessionData);
+
+        // 发送请求并获取响应
+        HttpResponse response = request.execute();
+
+        // 返回响应体作为字符串
+        JSON json = JSONUtil.parse(response.body());
+
+        if (pageNumber != null || hasMultiplePages(json)) {
+            Map<String, Object> data = json.getByPath("data", Map.class);
+            List<Map<String, Object>> pages = (List<Map<String, Object>>) data.get("pages");
+            String aid = data.get("aid").toString();
+
+            Map<String, Object> page = findPage(pages, pageNumber);
+            String cid = page.get("cid").toString();
+
+            String pageUrl = String.format("https://api.bilibili.com/x/player/v2?aid=%s&cid=%s", aid, cid);
+
+            HttpResponse pageResponse = HttpRequest.get(pageUrl)
+                    .header("Accept", "application/json")
+                    .header("Content-Type", "application/json")
+                    .header("User-Agent", "Mozilla/5.0 ...")
+                    .header("Cookie", "SESSDATA=" + bilibiliSessionData)
+                    .execute();
+
+            JSON pageJson = JSONUtil.parse(pageResponse.body());
+
+            Map<String, Object> subtitleInfo = pageJson.getByPath("data.subtitle", Map.class);
+            data.put("subtitle", subtitleInfo);
+            json.putByPath("data", data);
+        }
+        return json.getByPath("data").toString();
+    }
+    private boolean hasMultiplePages(JSON json) {
+        List<Map<String, Object>> pages = json.getByPath("data.pages", List.class);
+        return pages != null && !pages.isEmpty();
+    }
+
+    private Map<String, Object> findPage(List<Map<String, Object>> pages, String pageNumber) {
+        int pageNum = pageNumber != null ? Integer.parseInt(pageNumber) : 1;
+        for (Map<String, Object> page : pages) {
+            if (pageNum == (int) page.get("page")) {
+                return page;
+            }
+        }
+        return null; // 或者处理错误情况
     }
 }

@@ -12,9 +12,19 @@ import com.rookie.aigc.domain.vo.resp.SubtitleResult;
  */
 public interface BilibiliService {
 
-
+    /**
+     * 精炼视频字幕
+     * @param videoId
+     * @param pageNumber
+     * @param shouldShowTimestamp
+     * @return
+     */
     SubtitleResult fetchBilibiliSubtitle(String videoId, String pageNumber, Boolean shouldShowTimestamp);
 
+    /**
+     * 获取实时 @数量
+     * @return
+     */
     BiliBiliUnRead getRuntimeAtNum();
 
     /**
@@ -28,6 +38,14 @@ public interface BilibiliService {
      */
     void reply(BiliBiliReplyReq req);
 
+    /**
+     * 自动总结
+     * @param bvNum
+     * @return
+     */
     String autoSummarize(String bvNum);
+
+
+    String fetchBilibiliSubtitleUrls(String videoId, String pageNumber);
 
 }

@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * @author eumenides
- * @description
+ * @description 生成咒语
  * @date 2024/4/10
  */
 public class SubtitlePromptGenerator {
